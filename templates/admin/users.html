@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - {{ panel_name }}{% endblock %}
+
+{% block header_title %}User Management{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumb">
+    <a href="{{ url_for('dashboard') }}" class="breadcrumb-item">Dashboard</a>
+    <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+    <a href="{{ url_for('admin_dashboard') }}" class="breadcrumb-item">Admin</a>
+    <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+    <span class="breadcrumb-item active">Users</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Header Actions -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <h2 style="font-size: 1.25rem; margin: 0;">System Users</h2>
+    <button class="btn btn-primary" onclick="showCreateUserModal()">
+        <i class="fas fa-user-plus"></i> Create User
+    </button>
+</div>
+
+<!-- Search -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <form method="GET" action="{{ url_for('admin_users') }}">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <input type="text" name="search" class="form-control" placeholder="Search by username or email..." value="{{ search_query or '' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="{{ url_for('admin_users') }}" class="btn btn-outline">
+                <i class="fas fa-times"></i> Clear
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>VPS Count</th>
+                    <th>Port Quota</th>
+                    <th>Last Active</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div class="user-avatar" style="width: 32px; height: 32px;">
+                                {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture }}" alt="{{ user.username }}">
+                                {% else %}
+                                <span>{{ user.username[:1].upper() }}</span>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">{{ user.username }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if user.is_main_admin %}
+                        <span class="badge badge-danger">Main Admin</span>
+                        {% elif user.is_admin %}
+                        <span class="badge badge-warning">Admin</span>
+                        {% else %}
+                        <span class="badge badge-success">User</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.vps_count or 0 }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ user.used_ports or 0 }} / {{ user.port_quota or 0 }}</span>
+                    </td>
+                    <td>{{ user.last_active|relative_time if user.last_active else 'Never' }}</td>
+                    <td>{{ user.created_at|relative_time }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="btn btn-sm btn-outline" data-tooltip="View Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline" onclick="editUser({{ user.id }})" data-tooltip="Edit User">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% if not user.is_main_admin %}
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }}, '{{ user.username| e }}')" data-tooltip="Delete User">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem; flex-wrap: wrap;">
+        {% if page > 1 %}
+        <a href="?page={{ page-1 }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm btn-outline">
+            <i class="fas fa-chevron-left"></i> Prev
+        </a>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="btn btn-sm btn-primary">{{ p }}</span>
+            {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+            <a href="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm btn-outline">{{ p }}</a>
+            {% elif p == 4 and page > 5 or p == total_pages - 3 and page < total_pages - 4 %}
+            <span class="btn btn-sm btn-outline disabled">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="?page={{ page+1 }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm btn-outline">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create User Modal -->
+<div class="modal" id="createUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New User</h3>
+            <button class="modal-close" onclick="hideModal('createUserModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="newUsername" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="newEmail" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="newPassword" required autocomplete="new-password">
+                    <small style="color: var(--text-muted);">Minimum 8 characters</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select class="form-control" id="newRole">
+                        <option value="user">User</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Port Quota</label>
+                    <input type="number" class="form-control" id="newPortQuota" value="5" min="0" max="1000">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="hideModal('createUserModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createUser()">Create User</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal" id="editUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="hideModal('editUserModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editUserId">
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label class="form-checkbox" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="editIsAdmin">
+                        <span>Administrator privileges</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Port Quota</label>
+                    <input type="number" class="form-control" id="editPortQuota" min="0" max="1000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reset Password (optional)</label>
+                    <input type="password" class="form-control" id="editPassword" placeholder="Leave blank to keep current" autocomplete="new-password">
+                    <small style="color: var(--text-muted);">Minimum 8 characters if changing</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="hideModal('editUserModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveUserChanges()">Save Changes</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ───────────────────────────────────────────────
+//  Modal Helpers
+// ───────────────────────────────────────────────
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+}
+
+function hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+// ───────────────────────────────────────────────
+//  Create User
+// ───────────────────────────────────────────────
+async function showCreateUserModal() {
+    document.getElementById('createUserForm').reset();
+    showModal('createUserModal');
+}
+
+async function createUser() {
+    const btn = event.target;
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    const username = document.getElementById('newUsername').value.trim();
+    const email    = document.getElementById('newEmail').value.trim();
+    const password = document.getElementById('newPassword').value;
+    const role     = document.getElementById('newRole').value;
+    const portQuota = parseInt(document.getElementById('newPortQuota').value) || 0;
+
+    if (!username || !email || !password) {
+        showToast('Please fill all required fields', 'warning');
+        btn.disabled = false;
+        return;
+    }
+
+    if (password.length < 8) {
+        showToast('Password must be at least 8 characters', 'warning');
+        btn.disabled = false;
+        return;
+    }
+
+    showLoading();
+
+    try {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('is_admin', role === 'admin');
+        formData.append('port_quota', portQuota);
+
+        const res = await fetch('/admin/user/create', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('User created successfully', 'success');
+            hideModal('createUserModal');
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            showToast(data.error || 'Failed to create user', 'danger');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Network or server error', 'danger');
+    } finally {
+        hideLoading();
+        btn.disabled = false;
+    }
+}
+
+// ───────────────────────────────────────────────
+//  Edit User
+// ───────────────────────────────────────────────
+async function editUser(userId) {
+    showLoading();
+
+    try {
+        const res = await fetch(`/admin/users/${userId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const user = await res.json();
+
+        document.getElementById('editUserId').value      = user.id;
+        document.getElementById('editIsAdmin').checked   = !!user.is_admin;
+        document.getElementById('editPortQuota').value    = user.port_quota || 0;
+        document.getElementById('editPassword').value     = '';
+
+        showModal('editUserModal');
+    } catch (err) {
+        console.error(err);
+        showToast('Could not load user data', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function saveUserChanges() {
+    const btn = event.target;
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    const userId    = document.getElementById('editUserId').value;
+    const isAdmin   = document.getElementById('editIsAdmin').checked;
+    const portQuota = parseInt(document.getElementById('editPortQuota').value) || 0;
+    const password  = document.getElementById('editPassword').value.trim();
+
+    showLoading();
+
+    try {
+        // Update main settings
+        const res = await fetch(`/admin/users/${userId}/edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                is_admin: isAdmin,
+                port_quota: portQuota
+            })
+        });
+
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Update failed');
+
+        // Optional password reset
+        if (password) {
+            if (password.length < 8) {
+                showToast('New password must be at least 8 characters', 'warning');
+                hideLoading();
+                btn.disabled = false;
+                return;
+            }
+
+            const fd = new FormData();
+            fd.append('password', password);
+
+            const passRes = await fetch(`/admin/users/${userId}/reset-password`, {
+                method: 'POST',
+                body: fd
+            });
+
+            const passData = await passRes.json();
+            if (!passData.success) throw new Error(passData.error || 'Password reset failed');
+        }
+
+        showToast('User updated successfully', 'success');
+        hideModal('editUserModal');
+        setTimeout(() => location.reload(), 1400);
+
+    } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Update failed', 'danger');
+    } finally {
+        hideLoading();
+        btn.disabled = false;
+    }
+}
+
+// ───────────────────────────────────────────────
+//  Delete User
+// ───────────────────────────────────────────────
+function deleteUser(userId, username) {
+    if (!confirm(`Really delete user "${username}"?\nThis action cannot be undone and will remove all associated VPS.`)) {
+        return;
+    }
+
+    showLoading();
+
+    fetch(`/admin/users/${userId}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('User deleted successfully', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast(data.error || 'Delete failed', 'danger');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Network error', 'danger');
+        })
+        .finally(hideLoading);
+}
+</script>
+{% endblock %}

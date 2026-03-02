@@ -1,0 +1,168 @@
+<!-- templates/admin/system_info.html -->
+{% extends "admin/admin-base.html" %}
+
+{% block page_title %}System Information{% endblock %}
+{% block current_page %}System Info{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>System Information</h3>
+        <button class="btn btn-sm btn-outline" onclick="refreshSystemInfo()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+    
+    <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;" id="systemInfoContent">
+        <div>
+            <h4 class="mb-2">System Details</h4>
+            <table style="width: 100%;">
+                <tr>
+                    <td class="text-muted">Hostname:</td>
+                    <td id="hostname">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Platform:</td>
+                    <td id="platform">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Python Version:</td>
+                    <td id="python">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Uptime:</td>
+                    <td id="uptime">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">LXC Version:</td>
+                    <td id="lxcVersion">Loading...</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div>
+            <h4 class="mb-2">Resource Usage</h4>
+            <table style="width: 100%;">
+                <tr>
+                    <td class="text-muted">CPU Cores:</td>
+                    <td id="cpuCores">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">CPU Usage:</td>
+                    <td id="cpuPercent">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Memory Total:</td>
+                    <td id="memoryTotal">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Memory Used:</td>
+                    <td id="memoryUsed">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Memory Free:</td>
+                    <td id="memoryFree">Loading...</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <h4 class="mb-2">Disk Usage</h4>
+        <div id="diskInfo">
+            <div class="text-center">Loading...</div>
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <h4 class="mb-2">Database</h4>
+        <table style="width: 100%;">
+            <tr>
+                <td class="text-muted">Database Path:</td>
+                <td>{{ DATABASE_PATH }}</td>
+            </tr>
+            <tr>
+                <td class="text-muted">Database Size:</td>
+                <td id="dbSize">Loading...</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshSystemInfo();
+    });
+    
+    async function refreshSystemInfo() {
+        try {
+            const response = await fetch('{{ url_for("admin_system_info") }}');
+            const data = await response.json();
+            
+            // Update system details
+            document.getElementById('hostname').textContent = data.hostname || 'Unknown';
+            document.getElementById('platform').textContent = data.platform || 'Unknown';
+            document.getElementById('python').textContent = data.python || 'Unknown';
+            document.getElementById('uptime').textContent = data.uptime || 'Unknown';
+            document.getElementById('lxcVersion').textContent = data.lxc_version || 'Not installed';
+            
+            // Update CPU
+            document.getElementById('cpuCores').textContent = data.cpu_cores || 'Unknown';
+            document.getElementById('cpuPercent').innerHTML = `
+                ${typeof data.cpu_percent === 'number' ? data.cpu_percent.toFixed(1) + '%' : 'Unknown'}
+                <div class="progress" style="width: 200px; display: inline-block; margin-left: 1rem;">
+                    <div class="progress-bar ${data.cpu_percent > 80 ? 'danger' : data.cpu_percent > 60 ? 'warning' : 'success'}" 
+                         style="width: ${data.cpu_percent || 0}%"></div>
+                </div>
+            `;
+            
+            // Update memory
+            if (data.memory) {
+                document.getElementById('memoryTotal').textContent = data.memory.total + ' MB';
+                document.getElementById('memoryUsed').textContent = data.memory.used + ' MB';
+                document.getElementById('memoryFree').textContent = data.memory.free + ' MB';
+            }
+            
+            // Update disk info
+            let diskHtml = '';
+            if (data.disk_detailed) {
+                for (const [path, usage] of Object.entries(data.disk_detailed)) {
+                    const percent = (usage.used / usage.total * 100).toFixed(1);
+                    diskHtml += `
+                        <div class="mb-2">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>${path}</span>
+                                <span>${usage.used} GB / ${usage.total} GB (${percent}%)</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar ${percent > 80 ? 'danger' : percent > 60 ? 'warning' : 'success'}" 
+                                     style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (data.disk) {
+                diskHtml = `
+                    <div class="mb-2">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>/</span>
+                            <span>${data.disk.used} / ${data.disk.total}</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar ${parseInt(data.disk.percent) > 80 ? 'danger' : parseInt(data.disk.percent) > 60 ? 'warning' : 'success'}" 
+                                 style="width: ${parseInt(data.disk.percent)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('diskInfo').innerHTML = diskHtml;
+            
+            // Update database
+            document.getElementById('dbSize').textContent = data.database_size ? data.database_size + ' MB' : 'Unknown';
+            
+        } catch (error) {
+            showToast('Failed to load system information', 'danger');
+        }
+    }
+</script>
+{% endblock %}

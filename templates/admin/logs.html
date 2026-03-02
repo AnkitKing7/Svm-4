@@ -1,0 +1,241 @@
+<!-- templates/admin/logs.html -->
+{% extends "admin/admin-base.html" %}
+
+{% block page_title %}System Logs{% endblock %}
+{% block current_page %}Logs{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 0.5rem;">
+    <select class="form-control" id="logType" style="width: 150px;" onchange="changeLogType()">
+        <option value="hvm">HVM Panel</option>
+        <option value="lxc">LXC</option>
+        <option value="system">System</option>
+        <option value="auth">Auth</option>
+        <option value="kern">Kernel</option>
+    </select>
+    
+    <select class="form-control" id="logLines" style="width: 100px;" onchange="changeLogLines()">
+        <option value="50">50 lines</option>
+        <option value="100" selected>100 lines</option>
+        <option value="200">200 lines</option>
+        <option value="500">500 lines</option>
+        <option value="1000">1000 lines</option>
+    </select>
+    
+    <button class="btn btn-outline" onclick="refreshLogs()">
+        <i class="fas fa-sync-alt"></i>
+    </button>
+    
+    <button class="btn btn-outline" onclick="downloadLogs()">
+        <i class="fas fa-download"></i>
+    </button>
+    
+    <button class="btn btn-outline" onclick="clearLogs()">
+        <i class="fas fa-trash"></i>
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Log Viewer</h3>
+        <div>
+            <span class="status-badge status-running" id="logStatus">
+                <i class="fas fa-circle"></i> Live
+            </span>
+        </div>
+    </div>
+    
+    <div style="background: var(--bg-tertiary); border-radius: 8px; padding: 1rem; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.8125rem; max-height: 600px; overflow-y: auto;" id="logViewer">
+        <div class="text-center text-muted">Loading logs...</div>
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div>
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="autoRefresh" checked onchange="toggleAutoRefresh()">
+                <span>Auto-refresh (30s)</span>
+            </label>
+        </div>
+        <div class="text-muted" id="logTimestamp"></div>
+    </div>
+</div>
+
+<!-- Log Filtering -->
+<div class="card mt-3">
+    <div class="card-header">
+        <h3>Filter Logs</h3>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div style="flex: 1;">
+            <input type="text" class="form-control" placeholder="Filter by keyword..." id="filterInput" oninput="filterLogs()">
+        </div>
+        
+        <div>
+            <select class="form-control" id="logLevel" onchange="filterLogs()">
+                <option value="">All Levels</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARNING">WARNING</option>
+                <option value="INFO">INFO</option>
+                <option value="DEBUG">DEBUG</option>
+            </select>
+        </div>
+        
+        <div>
+            <button class="btn btn-outline" onclick="clearFilter()">
+                <i class="fas fa-times"></i> Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let logRefreshInterval;
+    let currentLogs = '';
+    let filterText = '';
+    let filterLevel = '';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLogs();
+        startAutoRefresh();
+    });
+    
+    function loadLogs() {
+        const type = document.getElementById('logType').value;
+        const lines = document.getElementById('logLines').value;
+        const viewer = document.getElementById('logViewer');
+        
+        fetch(`/admin/logs?type=${type}&lines=${lines}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentLogs = data.logs;
+                    applyFilters();
+                    document.getElementById('logTimestamp').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                } else {
+                    viewer.innerHTML = `<div class="text-danger">Failed to load logs: ${data.error}</div>`;
+                }
+            })
+            .catch(() => {
+                viewer.innerHTML = '<div class="text-danger">Failed to load logs</div>';
+            });
+    }
+    
+    function applyFilters() {
+        const viewer = document.getElementById('logViewer');
+        let lines = currentLogs.split('\n');
+        
+        // Apply text filter
+        if (filterText) {
+            lines = lines.filter(line => line.toLowerCase().includes(filterText.toLowerCase()));
+        }
+        
+        // Apply level filter
+        if (filterLevel) {
+            lines = lines.filter(line => line.includes(filterLevel));
+        }
+        
+        // Color code the logs
+        let html = '<pre style="margin: 0; color: var(--text-secondary);">';
+        lines.forEach(line => {
+            let color = 'var(--text-secondary)';
+            if (line.includes('ERROR') || line.includes('error')) {
+                color = 'var(--accent-danger)';
+            } else if (line.includes('WARNING') || line.includes('warn')) {
+                color = 'var(--accent-warning)';
+            } else if (line.includes('INFO')) {
+                color = 'var(--accent-success)';
+            } else if (line.includes('DEBUG')) {
+                color = 'var(--accent-info)';
+            }
+            html += `<span style="color: ${color}">${escapeHtml(line)}</span>\n`;
+        });
+        html += '</pre>';
+        
+        viewer.innerHTML = html;
+        
+        // Auto-scroll to bottom
+        viewer.scrollTop = viewer.scrollHeight;
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function filterLogs() {
+        filterText = document.getElementById('filterInput').value;
+        filterLevel = document.getElementById('logLevel').value;
+        applyFilters();
+    }
+    
+    function clearFilter() {
+        document.getElementById('filterInput').value = '';
+        document.getElementById('logLevel').value = '';
+        filterText = '';
+        filterLevel = '';
+        applyFilters();
+    }
+    
+    function changeLogType() {
+        loadLogs();
+    }
+    
+    function changeLogLines() {
+        loadLogs();
+    }
+    
+    function refreshLogs() {
+        loadLogs();
+    }
+    
+    function startAutoRefresh() {
+        if (logRefreshInterval) clearInterval(logRefreshInterval);
+        logRefreshInterval = setInterval(() => {
+            if (document.getElementById('autoRefresh').checked) {
+                loadLogs();
+            }
+        }, 30000);
+    }
+    
+    function toggleAutoRefresh() {
+        if (document.getElementById('autoRefresh').checked) {
+            startAutoRefresh();
+            document.getElementById('logStatus').innerHTML = '<i class="fas fa-circle"></i> Live';
+        } else {
+            clearInterval(logRefreshInterval);
+            document.getElementById('logStatus').innerHTML = '<i class="fas fa-circle"></i> Paused';
+        }
+    }
+    
+    function downloadLogs() {
+        const type = document.getElementById('logType').value;
+        const lines = document.getElementById('logLines').value;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${type}_logs_${timestamp}.log`;
+        
+        fetch(`/admin/logs?type=${type}&lines=${lines}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const blob = new Blob([data.logs], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            });
+    }
+    
+    function clearLogs() {
+        if (!confirm('Are you sure you want to clear the log viewer? This does not delete the actual log files.')) return;
+        document.getElementById('logViewer').innerHTML = '';
+        currentLogs = '';
+    }
+</script>
+{% endblock %}
