@@ -308,11 +308,11 @@ def init_db():
         settings_init = [
             ('cpu_threshold', '90', 'CPU usage threshold for auto-suspension (%)'),
             ('ram_threshold', '90', 'RAM usage threshold for auto-suspension (%)'),
-            ('site_name', 'HVM PANEL', 'Site name'),
+            ('site_name', 'SVM PANEL', 'Site name'),
             ('site_description', 'High-Performance VPS Management Panel', 'Site description'),
             ('header_icon', '/static/img/logo.png', 'Header icon path'),
             ('favicon', '/static/img/favicon.ico', 'Favicon path'),
-            ('footer_text', 'Powered by HVM Panel', 'Footer text'),
+            ('footer_text', 'Powered by SVM Panel', 'Footer text'),
             ('maintenance_mode', '0', 'Maintenance mode (1=enabled, 0=disabled)'),
             ('maintenance_message', 'Site is under maintenance. Please check back later.', 'Maintenance message'),
             ('registration_enabled', '1', 'Registration enabled (1=enabled, 0=disabled)'),
