@@ -1,4 +1,3 @@
-
 import os
 import sys
 import json
@@ -78,11 +77,11 @@ except ImportError:
     logging.warning("PIL not installed - image optimization disabled")
 
 # Environment variables
-PANEL_NAME = os.getenv('PANEL_NAME', 'HVM PANEL')
-PANEL_VERSION = os.getenv('PANEL_VERSION', '10.1-PRO-ULTIMATE')
-PANEL_DEVELOPER = os.getenv('PANEL_DEVELOPER', 'Hopingboz')
+PANEL_NAME = os.getenv('PANEL_NAME', 'SVM PANEL')
+PANEL_VERSION = os.getenv('PANEL_VERSION', '10. 2-PRO-ULTIMATE')
+PANEL_DEVELOPER = os.getenv('PANEL_DEVELOPER', 'AnkitDev')
 SECRET_KEY = os.getenv('SECRET_KEY', secrets.token_urlsafe(32))
-DATABASE_PATH = os.getenv('DATABASE_PATH', 'hvm.db')
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'svm.db')
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', 5000))
 MAIN_ADMIN_USERNAME = os.getenv('MAIN_ADMIN_USERNAME', 'admin')
@@ -129,11 +128,11 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('hvm.log'),
+        logging.FileHandler('svm.log'),
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger('hvm_panel')
+logger = logging.getLogger('svm_panel')
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -1926,7 +1925,7 @@ async def get_container_private_ip(container_name: str, node_id: int) -> str:
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    return render_template('index.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('index.html', panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1962,7 +1961,7 @@ def login():
             flash('Invalid username or password', 'danger')
             log_activity(None, 'login_failed', 'auth', None, {'username': username, 'ip': request.remote_addr})
     
-    return render_template('login.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('login.html', panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/2fa', methods=['GET', 'POST'])
 def two_factor():
@@ -1986,7 +1985,7 @@ def two_factor():
         else:
             flash('Invalid 2FA code', 'danger')
     
-    return render_template('2fa.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('2fa.html', panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -2007,23 +2006,23 @@ def register():
         
         if not terms:
             flash('You must accept the terms of service', 'danger')
-            return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+            return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
         
         if password != confirm_password:
             flash('Passwords do not match', 'danger')
-            return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+            return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
         
         if len(password) < 8:
             flash('Password must be at least 8 characters', 'danger')
-            return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+            return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
         
         if User.get_by_username(username):
             flash('Username already taken', 'danger')
-            return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+            return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
         
         if User.get_by_email(email):
             flash('Email already registered', 'danger')
-            return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+            return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
         
         password_hash = generate_password_hash(password)
         api_key = generate_api_key()
@@ -2043,11 +2042,11 @@ def register():
             conn.commit()
         
         log_activity(user_id, 'register', 'auth', None, {'username': username, 'email': email})
-        create_notification(user_id, 'success', 'Welcome!', f'Welcome to {get_setting("site_name", "HVM PANEL")}! Your account has been created.')
+        create_notification(user_id, 'success', 'Welcome!', f'Welcome to {get_setting("site_name", "SVM PANEL")}! Your account has been created.')
         flash('Registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
     
-    return render_template('register.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('register.html', panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/logout')
 @login_required
@@ -2064,7 +2063,7 @@ def forgot_password():
         flash('If the email exists, a reset link has been sent.', 'info')
         return redirect(url_for('login'))
     
-    return render_template('forgot_password.html', panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('forgot_password.html', panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -2079,7 +2078,7 @@ def reset_password(token):
         flash('Password reset successful. Please log in.', 'success')
         return redirect(url_for('login'))
     
-    return render_template('reset_password.html', token=token, panel_name=get_setting('site_name', 'HVM PANEL'))
+    return render_template('reset_password.html', token=token, panel_name=get_setting('site_name', 'SVM PANEL'))
 
 # ============================================================================
 # Notifications Routes
@@ -2112,7 +2111,7 @@ def notifications():
         total = cur.fetchone()[0]
     
     return render_template('notifications.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           notifications=notifications,
                           page=page,
                           total_pages=(total + per_page - 1) // per_page)
@@ -2163,7 +2162,7 @@ def os_icons():
         icons = [dict(row) for row in cur.fetchall()]
     
     return render_template('admin/os_icons.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           icons=icons,
                           os_options=OS_OPTIONS)
 
@@ -2302,7 +2301,7 @@ def profile():
     notifications = get_user_notifications(current_user.id, limit=10)
     
     return render_template('profile.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           activities=activities,
                           notifications=notifications)
 
@@ -2475,7 +2474,7 @@ def dashboard():
         })
     
     return render_template('dashboard.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           site_description=get_setting('site_description', ''),
                           header_icon=get_setting('header_icon', '/static/img/logo.png'),
                           vps_list=vps_list,
@@ -2523,7 +2522,7 @@ def vps_list():
 
     return render_template(
         'vps_list.html',
-        panel_name=get_setting('site_name', 'HVM PANEL'),
+        panel_name=get_setting('site_name', 'SVM PANEL'),
         vps_list=vps_list,
         socketio_available=SOCKETIO_AVAILABLE
     )
@@ -2658,7 +2657,7 @@ def vps_detail(vps_id):
 
     return render_template(
         "vps_detail.html",
-        panel_name=get_setting('site_name', 'HVM PANEL'),
+        panel_name=get_setting('site_name', 'SVM PANEL'),
         vps=vps,
         node=node,
         stats=stats,
@@ -2780,7 +2779,7 @@ def vps_console(vps_id):
     
     return render_template(
         'console.html',
-        panel_name=get_setting('site_name', 'HVM PANEL'),
+        panel_name=get_setting('site_name', 'SVM PANEL'),
         vps=vps,
         vps_ip=vps_ip,
         ssh_available=SSH_AVAILABLE
@@ -3252,7 +3251,7 @@ def vps_suspended_page(vps_id):
     return render_template(
         "vps_suspended.html",
         vps=vps,
-        panel_name=get_setting('site_name', 'HVM PANEL')
+        panel_name=get_setting('site_name', 'SVM PANEL')
     )
 
 # ============================================================================
@@ -3401,7 +3400,7 @@ def admin_dashboard():
     host_stats = run_sync(get_host_stats(1))
     
     return render_template('admin/dashboard.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           total_users=total_users,
                           total_vps=total_vps,
                           running_vps=running_vps,
@@ -3455,7 +3454,7 @@ def admin_users():
         total_users = cur.fetchone()[0]
     
     return render_template('admin/users.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           users=users,
                           search_query=search_query,
                           page=page,
@@ -3492,7 +3491,7 @@ def admin_user_detail(user_id):
         activities = [dict(row) for row in cur.fetchall()]
     
     return render_template('admin/user_detail.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           user=user,
                           vps_list=vps_list,
                           allocated_ports=allocated_ports,
@@ -3759,7 +3758,7 @@ def admin_vps():
 
     return render_template(
         'admin/vps.html',
-        panel_name=get_setting('site_name', 'HVM PANEL'),
+        panel_name=get_setting('site_name', 'SVM PANEL'),
         vps_list=vps_list,
         search_query=search_query,
         node_id=node_id,
@@ -4010,7 +4009,7 @@ def admin_vps_edit(vps_id):
             users=users,
             nodes=nodes,
             os_options=OS_OPTIONS,
-            panel_name=get_setting('site_name', 'HVM PANEL')
+            panel_name=get_setting('site_name', 'SVM PANEL')
         )
 
     data = request.form
@@ -4193,7 +4192,7 @@ def admin_vps_create():
         nodes = get_nodes()
         
         return render_template('admin/vps_create.html',
-                              panel_name=get_setting('site_name', 'HVM PANEL'),
+                              panel_name=get_setting('site_name', 'SVM PANEL'),
                               users=users,
                               nodes=nodes,
                               os_options=OS_OPTIONS)
@@ -4312,7 +4311,7 @@ def admin_nodes():
         })
     
     return render_template('admin/nodes.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'),
+                          panel_name=get_setting('site_name', 'SVM PANEL'),
                           nodes=node_stats,
                           socketio_available=SOCKETIO_AVAILABLE)
 
@@ -4512,7 +4511,7 @@ def admin_settings():
 
     return render_template(
         'admin/settings.html',
-        panel_name=get_setting('site_name', 'HVM PANEL'),
+        panel_name=get_setting('site_name', 'SVM PANEL'),
         settings=settings
     )
 
@@ -4580,7 +4579,7 @@ def upload_favicon():
 @main_admin_required
 def admin_maintenance():
     return render_template('admin/maintenance.html',
-                          panel_name=get_setting('site_name', 'HVM PANEL'))
+                          panel_name=get_setting('site_name', 'SVM PANEL'))
 
 @app.route('/admin/backup', methods=['POST'])
 @login_required
@@ -5291,15 +5290,15 @@ def resource_monitor():
 # ============================================================================
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('errors/404.html', panel_name=get_setting('site_name', 'HVM PANEL')), 404
+    return render_template('errors/404.html', panel_name=get_setting('site_name', 'SVM PANEL')), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('errors/500.html', panel_name=get_setting('site_name', 'HVM PANEL')), 500
+    return render_template('errors/500.html', panel_name=get_setting('site_name', 'SVM PANEL')), 500
 
 @app.errorhandler(403)
 def forbidden_error(error):
-    return render_template('errors/403.html', panel_name=get_setting('site_name', 'HVM PANEL')), 403
+    return render_template('errors/403.html', panel_name=get_setting('site_name', 'SVM PANEL')), 403
 
 @app.errorhandler(401)
 def unauthorized_error(error):
@@ -5465,8 +5464,8 @@ if __name__ == "__main__":
             config = HyperConfig()
             config.bind = [f"{HOST}:{PORT}"]
             config.use_reloader = False
-            config.errorlog = logging.getLogger('hvm_panel')
-            config.accesslog = logging.getLogger('hvm_panel')
+            config.errorlog = logging.getLogger('svm_panel')
+            config.accesslog = logging.getLogger('svm_panel')
             config.workers = 4
             
             try:
