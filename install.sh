@@ -17,18 +17,22 @@ show_header() {
     echo -e "${R}################################################################################${RESET}"
 }
 
-# --- 1. LICENSE GATE (Security First) ---
+# --- 1. LICENSE GATE (Fixed) ---
 check_license() {
     show_header
     echo -e "${Y}   [!] AUTHENTICATION REQUIRED [!]"
     read -p "   Enter License Key: " KEY
-    if [[ "$KEY" == "AnkitDev99$@" ]]; then
+    
+    # Humne 'AnkitDev99$@' ko strictly string compare karne ke liye ' ' ka use kiya hai
+    # Bash mein $ ko escape karne ke liye backslash \ lagaya hai
+    if [[ "$KEY" == "AnkitDev99\$@" ]]; then
         echo -e "${G}   [✔] License Verified! Access Granted.${RESET}"
         sleep 1
         menu
     else
         echo -e "${R}   [✖] Invalid Key! Access Denied.${RESET}"
-        sleep 1
+        echo -e "${Y}   Debug: Aapne enter kiya -> $KEY${RESET}"
+        sleep 2
         check_license
     fi
 }
